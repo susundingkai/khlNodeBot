@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "ES2020",
+//    "jsx": "react",
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": false,
+    "outDir": "./dist",
+    "allowJs": true,
+    "lib": ["ES6"]
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "include": [
+     "src" // 会编译src目录下的所有文件，包括子目录
+  ]
+}
