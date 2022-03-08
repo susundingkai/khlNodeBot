@@ -4,7 +4,7 @@ import { KHLEvent } from '../interface/KHLEvent.js'
 import { sendReq } from './http.js'
 import httpClient = sendReq.httpClient;
 import { getLogger } from '../logs/logger.js'
-const logger = getLogger()
+const logger = getLogger('ws')
 interface ping{
     s:number,
     sn:number
@@ -15,22 +15,24 @@ interface message{
     sn:number
 }
 export class client extends httpClient {
-    private cl: websocket.client;
-    private sn:number;
+    protected cl: websocket.client;
+    protected sn:number;
     private isAlive: boolean;
+    protected wsTimeoutId:any
     constructor (auth) {
       super(auth)
       this.sn = 0
       this.isAlive = false
-      // eslint-disable-next-line new-cap
-      this.cl = new websocket.client()
-      this.clientConfig()
+      this.wsTimeoutId = undefined
     }
 
     clientConfig () {
+      // eslint-disable-next-line new-cap
+      this.cl = new websocket.client()
       this.cl.on('connect', conn => {
         console.log('on connect')
         this.isAlive = true
+        this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 40000)
         this.ping(conn)
         conn.on('frame', frame => {
           console.log(`on frame - ${frame.binaryPayload.toString()}`)
@@ -39,7 +41,7 @@ export class client extends httpClient {
           let json
           if (data.type === 'binary') {
             json = <message>JSON.parse(inflate(data.binaryData))
-            logger.info(JSON.stringify(json))
+            if (json.s !== 3)logger.info(JSON.stringify(json))
             if (json.s === 0) {
               this.sn = json.sn
               data = json.d
@@ -50,10 +52,22 @@ export class client extends httpClient {
               this.evenHandle(msg)
             }
             if (json.s === 1) {
-              // console.log("receive hello")
+              if (json.d.code === 40103) {
+                this.emitter.emit('wsTimeout')
+              }
             }
             if (json.s === 3) {
-              // console.log('pong!!')
+              if (typeof this.wsTimeoutId === 'undefined') {
+                this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 40000)
+              } else {
+                clearTimeout(this.wsTimeoutId)
+                this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 40000)
+              }
+            }
+            if (json.s === 5) {
+              if (json.d.code === 40108) {
+                this.emitter.emit('wsTimeout')
+              }
             }
           } else if (data.type === 'utf8') {
             console.log(`on binary message - ${data.utf8Data}`)
@@ -62,6 +76,7 @@ export class client extends httpClient {
       })
       this.cl.on('connectFailed', err => {
         console.log(`on failed: ${err}`)
+        this.emitter.emit('wsTimeout')
       })
       this.cl.on('httpResponse', resp => {
         console.log(`got ${resp.statusCode} ${resp.statusMessage}, expected 101 Switching Protocols`)
@@ -69,6 +84,7 @@ export class client extends httpClient {
     }
 
     connect (url:string) {
+      this.wsTimeoutId = undefined
       this.cl.connect(url, null, null, null)
     }
 

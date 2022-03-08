@@ -10,9 +10,10 @@ import events from 'events'
 import { openDb } from './connect/database.js'
 import express from 'express'
 import bodyParser from 'body-parser'
+import { errorMessage } from './interface/base.js'
 const logger = getLogger()
 const loggerRoute = getLogger('route')
-const emitter = new events.EventEmitter()
+
 export class Bot extends client {
     private gateway:undefined|string|Promise<Response>
     private routeMap:Map<string, PluginBase>
@@ -25,17 +26,15 @@ export class Bot extends client {
       this.app.use(bodyParser.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
       this.gateway = undefined
       this.getAuth(auth)
-      this.getGateway()
+      // this.getGateway()
       this.routeMap = new Map<string, PluginBase>()
-      emitter.addListener('some_event', function () {
-        console.log('事件触发，调用此回调函数')
-      })
+      this.emitter.addListener('wsTimeout', this.restart.bind(this))
     }
 
-    getGateway ():void {
+    async getGateway () {
       const gateway = new GetGateway(this.auth)
       this.gateway = gateway.get()
-      this.gateway
+      return this.gateway
       // then() function is used to convert the posted contents to the website into json format
         .then(result => {
           return result.json()
@@ -44,9 +43,13 @@ export class Bot extends client {
         .then(jsonFormat => {
         // console.log(jsonFormat)
           this.gateway = (<myRes>jsonFormat).data.url
+          logger.info('请求gateway成功')
+          // logger.info(('gateway url is: ' + this.gateway))
+          return true
         }).catch(err => {
           this.gateway = undefined
           logger.error('请求gateway错误:', err)
+          return false
         })
     }
 
@@ -62,20 +65,31 @@ export class Bot extends client {
       })
     }
 
-    async run (): Promise<number> {
-      for (let i = 0; i < 6; ++i) {
-        if (typeof this.gateway !== 'string') {
-          await Sleep(500)
-        } else break
+    restart (this) {
+      logger.warn('restart websocket')
+      this.run(false).catch(e => logger.error(e))
+    }
+
+    async run (init = true): Promise<any> {
+      this.sn = 0
+      let tryTimes = 0
+      while (!(await this.getGateway())) {
+        await Sleep(5000)
+        logger.warn(`第${++tryTimes}次尝试`)
+        if (tryTimes === 5) { logger.warn('获取失败,等待60s后重试'); await Sleep(60000) }
       }
       if (typeof this.gateway !== 'string') {
         logger.error('获取gateway超时')
-        return -1
+        throw errorMessage.getGatewayFailed
       }
+      this.clientConfig()
       this.connect(this.gateway)
-      this.app.listen(apiPath.httpPort, function () {
-        console.log(`listening on port ${apiPath.httpPort}!`)
-      })
+      if (init) {
+        this.app.listen(apiPath.httpPort, function () {
+          console.log(`listening on port ${apiPath.httpPort}!`)
+        })
+      }
+      return true
     }
 
     async evenHandle (msg) {
@@ -107,7 +121,7 @@ export class Bot extends client {
 
     addRoute (path:string, _plug) {
       const db = openDb(_plug.name)
-      const plug = new _plug(emitter, db)
+      const plug = new _plug(this.emitter, db)
       this.routeMap.set(path, plug)
       this.app.post(path, (req, res) => {
         this.handleHttp(req, res, plug)
@@ -142,13 +156,13 @@ export class Bot extends client {
     async handleHttp (req, res, plug) {
       const data = await plug.handleReq(req.body, res)
       const channelIds = await plug.getChannels()
-      console.log(data)
+      // console.log(data)
       for (const targetId of channelIds) {
         this.sendMsg({
           data: {
             type: data.type,
             target_id: targetId.id,
-            content: JSON.stringify(data.data)
+            content: data.data
           },
           url: apiPath.createMessage
         }).catch(e => {

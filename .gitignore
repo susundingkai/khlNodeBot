@@ -5,3 +5,4 @@ dist
 /src/plugins/*
 storage/*
 .idea
+/src/bot/utils/test.ts
