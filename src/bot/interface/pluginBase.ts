@@ -23,8 +23,7 @@ export abstract class PluginBase {
 
     async getChannels () {
       return this.db.then(async _db => {
-        const result = await _db.all('SELECT id FROM bind_targetId')
-        return result
+        return await _db.all('SELECT id FROM bind_targetId')
       })
     }
 }
