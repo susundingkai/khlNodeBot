@@ -3,17 +3,19 @@ import FormData from 'form-data'
 import { apiPath } from '../config.js'
 import * as getImageFile from './http.mjs'
 import { getLogger } from '../logs/logger.js'
-import { imageRegex } from '../utils/utils.js'
+import { imageRegex, Sleep } from '../utils/utils.js'
 import { errorMessage } from '../interface/base.js'
 import events from 'events'
+
 const logger = getLogger('http')
 
 export namespace sendReq {
     export class httpClient {
         protected auth: {};
-        protected meID:any
+        protected meID: any
         private token: any;
-        protected emitter:events.EventEmitter
+        protected emitter: events.EventEmitter
+
         constructor (auth) {
           this.token = auth.token
           this.emitter = new events.EventEmitter()
@@ -67,9 +69,9 @@ export namespace sendReq {
 
         async imageReplace (content) {
           const imageUrls = imageRegex(content)
-          let text:string = content
+          let text: string = content
           for (const imageUrl of imageUrls) {
-            const result = await this.getEpisodeImage(imageUrl[1])
+            const result = await this.getImage(imageUrl[1])
             // @ts-ignore
             if (result.code !== 0) throw errorMessage.convertImageFailed
             // @ts-ignore
@@ -79,7 +81,7 @@ export namespace sendReq {
           return text
         }
 
-        async getEpisodeImage (url:string) {
+        async getImage (url: string) {
           logger.info('get image from :' + url)
           return fetch(url, {
             method: 'GET',
@@ -104,6 +106,39 @@ export namespace sendReq {
             return result
           })
         }
+
+        async checkOnline () {
+          await Sleep(60000)
+          try {
+            return fetch('https://www.kaiheila.cn/api/v3/user/me', {
+              method: 'GET',
+              // body: JSON.stringify(data.data),
+              headers: {
+                // 'Content-Type': 'multipart/form-data; boundary=' + formData.boundary,
+                Authorization: `Bot ${this.token}`
+              }
+            }).then(res => {
+              return res.json()
+            }).then(res => {
+              // @ts-ignore
+              if (res.data.online === false) {
+                logger.warn('bot is offline!')
+                this.emitter.emit('wsTimeout')
+              } else {
+                // logger.info('bot is online!!')
+              }
+            }).catch(err => {
+              logger.warn(err)
+              logger.warn('bot is offline!')
+              this.emitter.emit('wsTimeout')
+            })
+          } catch (e) {
+            logger.error('eventHandle:', e)
+            logger.warn('bot is offline!')
+            this.emitter.emit('wsTimeout')
+          }
+        }
+
       // http://192.168.0.125:8988/api/MediaCover/56/poster.jpg?apikey={{sonarrApi}}
     }
 }

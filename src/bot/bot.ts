@@ -6,7 +6,6 @@ import { Response } from 'node-fetch'
 import { getLogger } from './logs/logger.js'
 import { apiPath } from './config.js'
 import { PluginBase, pluginOptions } from './interface/pluginBase.js'
-import events from 'events'
 import { openDb } from './connect/database.js'
 import express from 'express'
 import bodyParser from 'body-parser'
@@ -82,8 +81,10 @@ export class Bot extends client {
         logger.error('获取gateway超时')
         throw errorMessage.getGatewayFailed
       }
-      this.clientConfig()
-      this.connect(this.gateway)
+      this.clientConfig(this.gateway)
+      // this.connect(this.gateway)
+      this.checkOnline()
+      // this.checkOnline()
       if (init) {
         this.app.listen(apiPath.httpPort, function () {
           console.log(`listening on port ${apiPath.httpPort}!`)

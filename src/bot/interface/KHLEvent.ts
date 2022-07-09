@@ -9,6 +9,7 @@ export namespace KHLEvent {
         msg_id: string // string 消息的 id
         msg_timestamp: number// int 消息发送时间的毫秒时间戳
         nonce: string // string 随机串，与用户消息发送 api 中传的 nonce 保持一致
+        from_type:number // string
         extra: any // mixed 不同的消息类型，结构不一致
     }
     interface user{
@@ -23,21 +24,29 @@ export namespace KHLEvent {
         vip_avatar:string // string vip 用户的头像的 url 地址，可能为 gif 动图
         mobile_verified:boolean // boolean 是否手机号已验证
         roles:any// Array 用户在当前服务器中的角色 id 组成的列表
+        os: string
+        banner:string
+        is_vip:boolean
+        is_ai_reduce_noise:boolean
     }
     interface textMessage {
         type:number // int 同上面 type
+        code:string
         guild_id:string // string 服务器 id
         channel_name:string// string 频道名
         mention:[] // Array 提及到的用户 id 的列表
         mention_all:boolean // boolean 是否 mention 所有用户
         mention_roles:[]// Array mention 用户角色的数组
         mention_here:boolean// boolean 是否 mention 在线用户
+        nav_channels:[]
+        kmarkdown: { raw_content: string, mention_part: [], mention_role_part: [] }
+        last_msg_content:string
         author:user // Map 用户信息, 见对象-用户 User
     }
 
     export function parse (input:any) {
       input = <event>input
-      if (input.type === 1) {
+      if (input.type === 9) {
         input = <event>input
         input.extra = <textMessage>input.extra
         // console.log(input.extra.author.roles)

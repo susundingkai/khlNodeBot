@@ -10,6 +10,7 @@
   "dependencies": {
     "@types/request": "^2.48.8",
     "@types/websocket": "^1.0.5",
+    "@types/ws": "^8.5.3",
     "express": "^4.17.2",
     "log4js": "^6.4.1",
     "minecraft-server-util": "^5.2.9",
@@ -21,7 +22,8 @@
     "sqlite": "^4.0.23",
     "sqlite3": "^5.0.2",
     "url-join": "^4.0.1",
-    "websocket": "^1.0.34"
+    "websocket": "^1.0.34",
+    "ws": "^8.8.0"
   },
   "keywords": [],
   "author": "",
