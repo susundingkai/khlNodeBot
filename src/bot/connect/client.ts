@@ -48,7 +48,9 @@ export class client extends httpClient {
       })
       this.cl.on('message', rev => {
         const json = <message>JSON.parse(inflate(rev))
-        if (json.s !== 3)logger.info(JSON.stringify(json))
+        if (json.s !== 3) {
+          // logger.info(JSON.stringify(json))
+        }
         if (json.s === 0) {
           this.sn = json.sn
           const data = json.d
