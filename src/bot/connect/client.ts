@@ -46,7 +46,7 @@ export class client extends httpClient {
       this.cl.on('open', () => {
         console.log('on connect')
         this.isAlive = true
-        this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 40000)
+        this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 6000)
         this.ping(this.cl)
       })
       this.cl.on('message', rev => {
