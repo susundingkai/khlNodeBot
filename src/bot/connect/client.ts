@@ -66,6 +66,7 @@ export class client extends httpClient {
         }
         if (json.s === 1) {
           if (json.d.code === 40103) {
+            logger.warn('token expired !')
             this.emitter.emit('wsTimeout')
           }
         }
