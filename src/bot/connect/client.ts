@@ -77,6 +77,7 @@ export class client extends httpClient {
         }
         if (json.s === 5) {
           if (json.d.code === 40108) {
+            logger.warn('need reconnect !')
             this.emitter.emit('wsTimeout')
           }
         }
