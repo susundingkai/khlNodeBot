@@ -66,7 +66,6 @@ export class Bot extends client {
     }
 
     restart (this) {
-      clearTimeout(this.wsTimeoutId)
       logger.warn('restart websocket')
       this.run(false).catch(e => logger.error(e))
     }

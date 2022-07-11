@@ -13,7 +13,7 @@ export namespace sendReq {
     export class httpClient {
         protected auth: {};
         protected meID: any
-        private token: any;
+        protected token: any;
         protected emitter: events.EventEmitter
 
         constructor (auth) {
@@ -105,38 +105,6 @@ export namespace sendReq {
             logger.info('get image :' + JSON.stringify(result))
             return result
           })
-        }
-
-        async checkOnline () {
-          await Sleep(60000)
-          try {
-            return fetch('https://www.kaiheila.cn/api/v3/user/me', {
-              method: 'GET',
-              // body: JSON.stringify(data.data),
-              headers: {
-                // 'Content-Type': 'multipart/form-data; boundary=' + formData.boundary,
-                Authorization: `Bot ${this.token}`
-              }
-            }).then(res => {
-              return res.json()
-            }).then(res => {
-              // @ts-ignore
-              if (res.data.online === false) {
-                logger.warn('bot is offline!')
-                this.emitter.emit('wsTimeout')
-              } else {
-                // logger.info('bot is online!!')
-              }
-            }).catch(err => {
-              logger.warn(err)
-              logger.warn('bot is offline!')
-              this.emitter.emit('wsTimeout')
-            })
-          } catch (e) {
-            logger.error('eventHandle:', e)
-            logger.warn('bot is offline!')
-            this.emitter.emit('wsTimeout')
-          }
         }
 
       // http://192.168.0.125:8988/api/MediaCover/56/poster.jpg?apikey={{sonarrApi}}

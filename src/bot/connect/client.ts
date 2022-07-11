@@ -5,6 +5,7 @@ import { KHLEvent } from '../interface/KHLEvent.js'
 import { sendReq } from './http.js'
 import { getLogger } from '../logs/logger.js'
 import httpClient = sendReq.httpClient;
+import fetch from 'node-fetch'
 
 const logger = getLogger('ws')
 interface ping{
@@ -35,7 +36,7 @@ export class client extends httpClient {
       this.isAlive = false
       // eslint-disable-next-line new-cap
       if (typeof this.wsTimeoutId !== 'undefined') {
-        clearTimeout(this.wsTimeoutId)
+        this._clearTimeout()
       }
       if (this.cl !== undefined) {
         // this.cl.on('close', () => {})
@@ -46,7 +47,7 @@ export class client extends httpClient {
       this.cl.on('open', () => {
         console.log('on connect')
         this.isAlive = true
-        this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 6000)
+        this.setTimeout()
         this.ping(this.cl)
       })
       this.cl.on('message', rev => {
@@ -66,83 +67,23 @@ export class client extends httpClient {
         }
         if (json.s === 1) {
           if (json.d.code === 40103) {
-            logger.warn('token expired !')
-            this.emitter.emit('wsTimeout')
+            this.emitTimeout('token expired !')
           }
         }
         if (json.s === 3) {
         //  rec pong packet
           if (typeof this.wsTimeoutId !== 'undefined') {
-            clearTimeout(this.wsTimeoutId)
+            this._clearTimeout()
           }
         }
         if (json.s === 5) {
           if (json.d.code === 40108) {
-            logger.warn('need reconnect !')
-            this.emitter.emit('wsTimeout')
+            this.emitTimeout('need reconnect !')
           }
         }
       })
-      // this.cl = new websocket.client()
-      // this.cl.on('connect', conn => {
-      //   console.log('on connect')
-      //   this.isAlive = true
-      //   this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 40000)
-      //   this.ping(conn)
-      //   conn.on('frame', frame => {
-      //     console.log(`on frame - ${frame.binaryPayload.toString()}`)
-      //   })
-      //   conn.on('message', data => {
-      //     let json
-      //     if (data.type === 'binary') {
-      //       json = <message>JSON.parse(inflate(data.binaryData))
-      //       if (json.s !== 3)logger.info(JSON.stringify(json))
-      //       if (json.s === 0) {
-      //         this.sn = json.sn
-      //         data = json.d
-      //         const msg = KHLEvent.parse(data)
-      //         if (msg === undefined) {
-      //           return 0
-      //         }
-      //         this.evenHandle(msg)
-      //       }
-      //       if (json.s === 1) {
-      //         if (json.d.code === 40103) {
-      //           this.emitter.emit('wsTimeout')
-      //         }
-      //       }
-      //       if (json.s === 3) {
-      //         if (typeof this.wsTimeoutId === 'undefined') {
-      //           this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 40000)
-      //         } else {
-      //           clearTimeout(this.wsTimeoutId)
-      //           this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 40000)
-      //         }
-      //       }
-      //       if (json.s === 5) {
-      //         if (json.d.code === 40108) {
-      //           this.emitter.emit('wsTimeout')
-      //         }
-      //       }
-      //     } else if (data.type === 'utf8') {
-      //       console.log(`on binary message - ${data.utf8Data}`)
-      //     }
-      //   })
-      // })
-      // this.cl.on('connectFailed', err => {
-      //   console.log(`on failed: ${err}`)
-      //   this.emitter.emit('wsTimeout')
-      // })
-      // this.cl.on('httpResponse', resp => {
-      //   console.log(`got ${resp.statusCode} ${resp.statusMessage}, expected 101 Switching Protocols`)
-      // })
     }
 
-    // connect (url:string) {
-    //   this.wsTimeoutId = undefined
-    //   this.cl.connect(url, null, null, null)
-    // }
-    //
     async _ping (conn:WebSocket):Promise<boolean> {
       if (this.isAlive === false) {
         return false
@@ -153,12 +94,7 @@ export class client extends httpClient {
       }
       const pingBuf = JSON.stringify(s)
       conn.send(pingBuf)
-      if (typeof this.wsTimeoutId === 'undefined') {
-        this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 6000)
-      } else {
-        clearTimeout(this.wsTimeoutId)
-        this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 6000)
-      }
+      this.setTimeout()
       return true
     }
 
@@ -170,6 +106,25 @@ export class client extends httpClient {
     }
 
     evenHandle (msg) {}
+    setTimeout ():void {
+      this._clearTimeout()
+      this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 6000)
+      // logger.warn('wsTimeout:', reason)
+    }
+
+    emitTimeout (reason:string) {
+      this.emitter.emit('wsTimeout')
+      this._clearTimeout()
+      logger.warn('wsTimeout:', reason)
+    }
+
+    _clearTimeout () {
+      if (typeof this.wsTimeoutId !== 'undefined') {
+        clearTimeout(this.wsTimeoutId)
+        this.wsTimeoutId = undefined
+      }
+    }
+
     setMsgTest () {
       this.sendMsg({
         data: {
@@ -179,5 +134,34 @@ export class client extends httpClient {
         },
         url: '/api/v3/message/create'
       })
+    }
+
+    async checkOnline () {
+      await Sleep(60000)
+      try {
+        return fetch('https://www.kaiheila.cn/api/v3/user/me', {
+          method: 'GET',
+          // body: JSON.stringify(data.data),
+          headers: {
+          // 'Content-Type': 'multipart/form-data; boundary=' + formData.boundary,
+            Authorization: `Bot ${this.token}`
+          }
+        }).then(res => {
+          return res.json()
+        }).then(res => {
+        // @ts-ignore
+          if (res.data.online === false) {
+            this.emitTimeout('bot is offline!')
+          } else {
+          // logger.info('bot is online!!')
+          }
+        }).catch(err => {
+          logger.warn(err)
+          this.emitTimeout('bot is offline!')
+        })
+      } catch (e) {
+        logger.error('eventHandle:', e)
+        this.emitTimeout('bot is offline!')
+      }
     }
 }
