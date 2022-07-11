@@ -49,7 +49,7 @@ export class client extends httpClient {
       this.cl.on('open', () => {
         console.log('on connect')
         this.isAlive = true
-        this.setTimeout()
+        // this.setTimeout()
         this.ping(this.cl)
       })
       this.cl.on('message', rev => {
@@ -108,7 +108,7 @@ export class client extends httpClient {
     evenHandle (msg) {}
     setTimeout ():void {
       this._clearTimeout()
-      this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 6000)
+      this.wsTimeoutId = setTimeout(() => this.emitTimeout('wsTimeout'), 6000)
       // logger.warn('wsTimeout:', reason)
     }
 
