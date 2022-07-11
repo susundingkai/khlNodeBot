@@ -74,9 +74,7 @@ export class client extends httpClient {
         }
         if (json.s === 3) {
         //  rec pong packet
-          if (typeof this.wsTimeoutId !== 'undefined') {
-            this._clearTimeout()
-          }
+          this._clearTimeout()
         }
         if (json.s === 5) {
           if (json.d.code === 40108) {
