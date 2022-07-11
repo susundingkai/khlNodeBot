@@ -39,7 +39,9 @@ export class client extends httpClient {
         this._clearTimeout()
       }
       if (this.cl !== undefined) {
-        // this.cl.on('close', () => {})
+        this.cl.on('close', () => {
+          logger.warn('disconnect')
+        })
       }
       this.cl = new WebSocket(url, {
         perMessageDeflate: false
