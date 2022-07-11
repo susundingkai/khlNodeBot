@@ -70,11 +70,9 @@ export class client extends httpClient {
           }
         }
         if (json.s === 3) {
-          if (typeof this.wsTimeoutId === 'undefined') {
-            this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 40000)
-          } else {
+        //  rec pong packet
+          if (typeof this.wsTimeoutId !== 'undefined') {
             clearTimeout(this.wsTimeoutId)
-            this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 40000)
           }
         }
         if (json.s === 5) {
@@ -153,6 +151,12 @@ export class client extends httpClient {
       }
       const pingBuf = JSON.stringify(s)
       conn.send(pingBuf)
+      if (typeof this.wsTimeoutId === 'undefined') {
+        this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 6000)
+      } else {
+        clearTimeout(this.wsTimeoutId)
+        this.wsTimeoutId = setTimeout(() => this.emitter.emit('wsTimeout'), 6000)
+      }
       return true
     }
 
