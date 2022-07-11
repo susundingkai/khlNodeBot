@@ -38,7 +38,7 @@ export class client extends httpClient {
         clearTimeout(this.wsTimeoutId)
       }
       if (this.cl !== undefined) {
-        this.cl.on('close', () => {})
+        // this.cl.on('close', () => {})
       }
       this.cl = new WebSocket(url, {
         perMessageDeflate: false

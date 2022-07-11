@@ -74,7 +74,10 @@ export class Bot extends client {
     async run (init = true): Promise<any> {
       this.sn = 0
       let tryTimes = 0
-      while (!(await this.getGateway())) {
+      while (true) {
+        if ((await this.getGateway())) {
+          break
+        }
         await Sleep(5000)
         logger.warn(`第${++tryTimes}次尝试`)
         if (tryTimes === 5) { logger.warn('获取失败,等待60s后重试'); await Sleep(60000) }
