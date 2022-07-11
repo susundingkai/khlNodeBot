@@ -4,6 +4,7 @@ import { getLogger } from './bot/logs/logger.js'
 import { Apex } from './plugins/apex/apex.js'
 import { Mcs } from './plugins/mcs/mcs.js'
 import { Sonarr } from './plugins/sonarr/sonarr.js'
+
 const logger = getLogger()
 logger.info('=================start===============')
 const a = new Bot(auth)

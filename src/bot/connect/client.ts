@@ -1,10 +1,11 @@
 // import websocket from 'websocket'
 import WebSocket from 'ws'
-import { Sleep, inflate } from '../utils/utils.js'
+import { inflate, Sleep } from '../utils/utils.js'
 import { KHLEvent } from '../interface/KHLEvent.js'
 import { sendReq } from './http.js'
-import httpClient = sendReq.httpClient;
 import { getLogger } from '../logs/logger.js'
+import httpClient = sendReq.httpClient;
+
 const logger = getLogger('ws')
 interface ping{
     s:number,
@@ -30,6 +31,8 @@ export class client extends httpClient {
     }
 
     clientConfig (url) {
+      this.sn = 0
+      this.isAlive = false
       // eslint-disable-next-line new-cap
       if (typeof this.wsTimeoutId !== 'undefined') {
         clearTimeout(this.wsTimeoutId)

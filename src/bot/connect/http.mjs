@@ -1,4 +1,4 @@
-import fetch, { FormData, File, fileFrom } from 'node-fetch'
+import {File, FormData} from 'node-fetch'
 
 export default function getImageFile (buf) {
   const image = new File([buf], 'poster.jpg', { type: 'image/jpeg' })

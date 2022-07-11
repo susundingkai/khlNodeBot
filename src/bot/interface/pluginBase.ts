@@ -1,4 +1,5 @@
 import events from 'events'
+
 export interface pluginOptions {
     targetId: string
 }

@@ -10,6 +10,7 @@ import { openDb } from './connect/database.js'
 import express from 'express'
 import bodyParser from 'body-parser'
 import { errorMessage } from './interface/base.js'
+
 const logger = getLogger()
 const loggerRoute = getLogger('route')
 
