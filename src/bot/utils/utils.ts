@@ -1,5 +1,6 @@
 import pako from 'pako'
 import ping from 'ping'
+
 export const Sleep = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms))
 }

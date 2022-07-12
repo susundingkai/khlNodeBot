@@ -4,8 +4,8 @@ import { inflate, Sleep } from '../utils/utils.js'
 import { KHLEvent } from '../interface/KHLEvent.js'
 import { sendReq } from './http.js'
 import { getLogger } from '../logs/logger.js'
-import httpClient = sendReq.httpClient;
 import fetch from 'node-fetch'
+import httpClient = sendReq.httpClient;
 
 const logger = getLogger('ws')
 interface ping{
@@ -120,7 +120,7 @@ export class client extends httpClient {
     }
 
     emitTimeout (reason:string) {
-      this.emitter.emit('wsTimeout')
+      this.emitter.emit('wsTimeout', this.secret)
       this._clearTimeout()
       logger.warn('wsTimeout:', reason)
     }

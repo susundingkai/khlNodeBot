@@ -19,15 +19,19 @@ export class Bot extends client {
     private routeMap:Map<string, PluginBase>
     private db: Promise<any>
     private app:express.Application
+    private plugMap: Map<number, PluginBase>;
     constructor (auth) {
       super(auth)
       this.app = express()
+      // @ts-ignore
       this.app.use(bodyParser.json()) // for parsing application/json
+      // @ts-ignore
       this.app.use(bodyParser.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
       this.gateway = undefined
       this.getAuth(auth)
       // this.getGateway()
       this.routeMap = new Map<string, PluginBase>()
+      this.plugMap = new Map<number, PluginBase>()
       this.emitter.addListener('wsTimeout', this.restart.bind(this))
     }
 
@@ -35,13 +39,10 @@ export class Bot extends client {
       const gateway = new GetGateway(this.auth)
       this.gateway = gateway.get()
       return this.gateway
-      // then() function is used to convert the posted contents to the website into json format
         .then(result => {
           return result.json()
         })
-      // the posted contents to the website in json format is displayed as the output on the screen
         .then(jsonFormat => {
-        // console.log(jsonFormat)
           this.gateway = (<myRes>jsonFormat).data.url
           logger.info('请求gateway成功')
           // logger.info(('gateway url is: ' + this.gateway))
@@ -65,15 +66,17 @@ export class Bot extends client {
       })
     }
 
-    restart (this) {
-      logger.warn('restart websocket')
-      this.run(false).catch(e => logger.error(e))
+    restart (this, secret) {
+      if (secret === this.secret) {
+        logger.warn('restart websocket')
+        this.run(false).catch(e => logger.error(e))
+      }
     }
 
     async run (init = true): Promise<any> {
       while (true) {
         logger.info('check Internet....')
-        if (await checkInternetConnection) {
+        if (await checkInternetConnection()) {
           logger.info('Internet check passed!!')
           break
         }
@@ -83,7 +86,6 @@ export class Bot extends client {
         await this.botOffline()
       }
       this.getMe()
-      this.sn = 0
       let tryTimes = 0
       while (true) {
         if ((await this.getGateway())) {
@@ -102,6 +104,7 @@ export class Bot extends client {
       // this.checkOnline()
       // this.checkOnline()
       if (init) {
+        // @ts-ignore
         this.app.listen(apiPath.httpPort, function () {
           console.log(`listening on port ${apiPath.httpPort}!`)
         })
@@ -137,13 +140,18 @@ export class Bot extends client {
     }
 
     addRoute (path:string, _plug) {
+      const plugSecret = this.genSecret()
       const db = openDb(_plug.name)
-      const plug = new _plug(this.emitter, db)
+      const plug = new _plug(this.emitter, db, plugSecret)
+      plug.initRoutes()
       this.routeMap.set(path, plug)
-      this.app.post(path, (req, res) => {
-        this.handleHttp(req, res, plug)
-      })
-
+      this.plugMap.set(plugSecret, plug)
+      this.emitter.addListener(plugSecret.toString(), (data) => this.handlePlugEmit(data, plug))
+      // @ts-ignore
+      // this.app.all(path, (req, res) => {
+      //   this.handleHttp(req, res, plug)
+      // })
+      this.app.use(path, plug.routes)
       // this.app.get('/' + path, function (req, res) {
       //     plug.handleReq(res.data)
       // })
@@ -170,15 +178,18 @@ export class Bot extends client {
       return emptyRes
     }
 
-    async handleHttp (req, res, plug) {
-      const data = await plug.handleReq(req.body, res)
+    async handlePlugEmit (data, plug) {
+      // const data = await plug.handleReq(req, res)
+      if (data === undefined) {
+        return 0
+      }
       const channelIds = await plug.getChannels()
       // console.log(data)
       for (const targetId of channelIds) {
         this.sendMsg({
           data: {
             type: data.type,
-            target_id: targetId.id,
+            target_id: targetId,
             content: data.data
           },
           url: apiPath.createMessage

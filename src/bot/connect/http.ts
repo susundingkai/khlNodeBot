@@ -3,7 +3,7 @@ import FormData from 'form-data'
 import { apiPath } from '../config.js'
 import * as getImageFile from './http.mjs'
 import { getLogger } from '../logs/logger.js'
-import { imageRegex, Sleep } from '../utils/utils.js'
+import { imageRegex } from '../utils/utils.js'
 import { errorMessage } from '../interface/base.js'
 import events from 'events'
 
@@ -15,8 +15,11 @@ export namespace sendReq {
         protected meID: any
         protected token: any;
         protected emitter: events.EventEmitter
-
+        protected secret:number
+        protected secretList:[number]
         constructor (auth) {
+          this.secretList = [0]
+          this.secret = this.genSecret()
           this.token = auth.token
           this.emitter = new events.EventEmitter()
         }
@@ -90,9 +93,9 @@ export namespace sendReq {
               // 'Content-Type': 'image/jpeg'
             }
           }).then(res => res.arrayBuffer()).then(async buf => {
-            console.log(buf)
+            // console.log(buf)
             const formData = getImageFile.default(buf)
-            console.log(formData)
+            // console.log(formData)
             const res = await fetch('https://www.kaiheila.cn/api/v3/asset/create', {
               method: 'POST',
               body: formData,
@@ -107,6 +110,21 @@ export namespace sendReq {
           })
         }
 
+        genSecret () {
+          let final:number = 0
+          while (true) {
+            const precision = 10000000
+            const rawPre = (Date.now() - new Date(1624206802955).getTime()) / precision
+            const preNumber = Number(rawPre.toFixed()) * precision
+            const randam = Math.floor(Math.random() * precision)
+            final = preNumber + randam
+            if (!(final in this.secretList)) {
+              this.secretList.push(final)
+              break
+            }
+          }
+          return final
+        }
       // http://192.168.0.125:8988/api/MediaCover/56/poster.jpg?apikey={{sonarrApi}}
     }
 }
