@@ -35,13 +35,10 @@ export class Bot extends client {
       const gateway = new GetGateway(this.auth)
       this.gateway = gateway.get()
       return this.gateway
-      // then() function is used to convert the posted contents to the website into json format
         .then(result => {
           return result.json()
         })
-      // the posted contents to the website in json format is displayed as the output on the screen
         .then(jsonFormat => {
-        // console.log(jsonFormat)
           this.gateway = (<myRes>jsonFormat).data.url
           logger.info('请求gateway成功')
           // logger.info(('gateway url is: ' + this.gateway))
@@ -73,7 +70,7 @@ export class Bot extends client {
     async run (init = true): Promise<any> {
       while (true) {
         logger.info('check Internet....')
-        if (await checkInternetConnection) {
+        if (await checkInternetConnection()) {
           logger.info('Internet check passed!!')
           break
         }
@@ -83,7 +80,6 @@ export class Bot extends client {
         await this.botOffline()
       }
       this.getMe()
-      this.sn = 0
       let tryTimes = 0
       while (true) {
         if ((await this.getGateway())) {
