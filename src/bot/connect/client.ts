@@ -44,7 +44,7 @@ export class client extends httpClient {
       if (this.cl !== undefined) {
         this.cl.terminate()
         this.cl = undefined
-        logger.warn('disconnect')
+        logger.warn('kill old connection')
       }
       this.cl = new WebSocket(url, {
         perMessageDeflate: false
@@ -76,7 +76,7 @@ export class client extends httpClient {
           }
         }
         if (json.s === 3) {
-          logger.info('pong')
+          // logger.info('pong')
           //  rec pong packet
           this._clearTimeout()
         }
@@ -95,7 +95,7 @@ export class client extends httpClient {
       }
       const pingBuf = JSON.stringify(s)
       conn.send(pingBuf)
-      logger.info('ping')
+      // logger.info('ping')
       this.setTimeout()
       return true
     }
