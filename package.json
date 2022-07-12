@@ -17,6 +17,7 @@
     "module-alias": "^2.2.2",
     "node-fetch": "^3.2.0",
     "pako": "^2.0.4",
+    "ping": "^0.4.2",
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
     "sqlite": "^4.0.23",

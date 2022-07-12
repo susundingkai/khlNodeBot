@@ -1,6 +1,6 @@
 import { GetGateway, myRes } from './connect/getGateway.js'
 import { client } from './connect/client.js'
-import { Sleep } from './utils/utils.js'
+import { checkInternetConnection, Sleep } from './utils/utils.js'
 import { httpInterface } from './interface/httpInterface.js'
 import { Response } from 'node-fetch'
 import { getLogger } from './logs/logger.js'
@@ -71,6 +71,18 @@ export class Bot extends client {
     }
 
     async run (init = true): Promise<any> {
+      while (true) {
+        logger.info('check Internet....')
+        if (await checkInternetConnection) {
+          logger.info('Internet check passed!!')
+          break
+        }
+      }
+      if (await this.checkOnline()) {
+        logger.warn('bot is online, trying to kick off....')
+        await this.botOffline()
+      }
+      this.getMe()
       this.sn = 0
       let tryTimes = 0
       while (true) {

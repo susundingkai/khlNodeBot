@@ -1,5 +1,5 @@
 import pako from 'pako'
-
+import ping from 'ping'
 export const Sleep = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -30,4 +30,14 @@ export function imageRegex (text: string) {
     lists.push(m.slice(0, 2))
   }
   return lists
+}
+
+export async function checkInternetConnection () {
+  const res = await ping.promise.probe('www.baidu.com')
+  if (res.packetLoss !== 'unknown' || res.packetLoss !== '100.000') {
+    return true
+  } else {
+    return false
+  }
+  // const res = await ping.promise.probe('www.baidudsadadfafdsfsdfdsfada.com')
 }

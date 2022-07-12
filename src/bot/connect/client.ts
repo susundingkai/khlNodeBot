@@ -36,6 +36,7 @@ export class client extends httpClient {
     clientConfig (url) {
       this.sn = 0
       this.isAlive = false
+      this.wsCountTime = (this.wsCountTime + 1) % 1000
       // eslint-disable-next-line new-cap
       if (typeof this.wsTimeoutId !== 'undefined') {
         this._clearTimeout()
@@ -52,12 +53,12 @@ export class client extends httpClient {
         console.log('on connect')
         this.isAlive = true
         // this.setTimeout()
-        this.ping(this.cl)
+        this.ping(this.cl, this.wsCountTime)
       })
       this.cl.on('message', rev => {
         const json = <message>JSON.parse(inflate(rev))
         if (json.s !== 3) {
-          // logger.info(JSON.stringify(json))
+          logger.info(JSON.stringify(json))
         }
         if (json.s === 0) {
           this.sn = json.sn
@@ -71,61 +72,60 @@ export class client extends httpClient {
         }
         if (json.s === 1) {
           if (json.d.code === 40103) {
-            this.emitTimeout('token expired !', this.wsCountTime)
+            this.emitTimeout('token expired !')
           }
         }
         if (json.s === 3) {
-        //  rec pong packet
+          logger.info('pong')
+          //  rec pong packet
           this._clearTimeout()
         }
         if (json.s === 5) {
           if (json.d.code === 40108) {
-            this.emitTimeout('need reconnect !', this.wsCountTime)
+            this.emitTimeout('need reconnect !')
           }
         }
       })
     }
 
     async _ping (conn:WebSocket):Promise<boolean> {
-      if (this.isAlive === false) {
-        return false
-      }
       const s:ping = {
         s: 2,
         sn: this.sn
       }
       const pingBuf = JSON.stringify(s)
       conn.send(pingBuf)
+      logger.info('ping')
       this.setTimeout()
       return true
     }
 
-    async ping (conn:WebSocket) {
-      while (await this._ping(conn)) {
-        // this.checkOnline()
-        await Sleep(28000)
+    async ping (conn:WebSocket, count:number) {
+      while (true) {
+        if (this.wsCountTime === count) {
+          await this._ping(conn)
+          // this.checkOnline()
+          await Sleep(28000)
+        } else {
+          break
+        }
       }
     }
 
     evenHandle (msg) {}
     setTimeout ():void {
       this._clearTimeout()
-      this.wsCountTime = (this.wsCountTime + 1) % 1000
-      const curCountTime = this.wsCountTime
-      this.wsTimeoutId = setTimeout(() => this.emitTimeout('wsTimeout', curCountTime), 6000)
+      this.wsTimeoutId = setTimeout(() => this.emitTimeout('wsTimeout'), 6000)
       // logger.warn('wsTimeout:', reason)
     }
 
-    emitTimeout (reason:string, count:number) {
-      if (this.wsCountTime === count) {
-        this.emitter.emit('wsTimeout')
-        this._clearTimeout()
-        logger.warn('wsTimeout:', reason)
-      }
+    emitTimeout (reason:string) {
+      this.emitter.emit('wsTimeout')
+      this._clearTimeout()
+      logger.warn('wsTimeout:', reason)
     }
 
     _clearTimeout () {
-      this.wsCountTime = (this.wsCountTime + 1) % 1000
       if (typeof this.wsTimeoutId !== 'undefined') {
         clearTimeout(this.wsTimeoutId)
         this.wsTimeoutId = undefined
@@ -144,7 +144,6 @@ export class client extends httpClient {
     }
 
     async checkOnline () {
-      await Sleep(60000)
       try {
         return fetch('https://www.kaiheila.cn/api/v3/user/me', {
           method: 'GET',
@@ -158,17 +157,40 @@ export class client extends httpClient {
         }).then(res => {
         // @ts-ignore
           if (res.data.online === false) {
-            this.emitTimeout('bot is offline!', this.wsCountTime)
+            return false
+            // this.emitTimeout('bot is offline!')
           } else {
+            return true
           // logger.info('bot is online!!')
           }
         }).catch(err => {
           logger.warn(err)
-          this.emitTimeout('bot is offline!', this.wsCountTime)
+          return false
+          // this.emitTimeout('bot is offline!')
         })
       } catch (e) {
         logger.error('eventHandle:', e)
-        this.emitTimeout('bot is offline!', this.wsCountTime)
+        return false
+        // this.emitTimeout('bot is offline!')
+      }
+    }
+
+    async botOffline () {
+      try {
+        return fetch('https://www.kaiheila.cn/api/v3/user/offline', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bot ${this.token}`
+          }
+        }).then(res => {
+          return true
+        }).catch(err => {
+          logger.warn(err)
+          return false
+        })
+      } catch (e) {
+        logger.error('eventHandle:', e)
+        return false
       }
     }
 }
