@@ -24,11 +24,13 @@ export class client extends httpClient {
     protected sn:number;
     private isAlive: boolean;
     protected wsTimeoutId:any
+    protected wsCountTime:number
     constructor (auth) {
       super(auth)
       this.sn = 0
       this.isAlive = false
       this.wsTimeoutId = undefined
+      this.wsCountTime = 0
     }
 
     clientConfig (url) {
@@ -69,7 +71,7 @@ export class client extends httpClient {
         }
         if (json.s === 1) {
           if (json.d.code === 40103) {
-            this.emitTimeout('token expired !')
+            this.emitTimeout('token expired !', this.wsCountTime)
           }
         }
         if (json.s === 3) {
@@ -78,7 +80,7 @@ export class client extends httpClient {
         }
         if (json.s === 5) {
           if (json.d.code === 40108) {
-            this.emitTimeout('need reconnect !')
+            this.emitTimeout('need reconnect !', this.wsCountTime)
           }
         }
       })
@@ -108,17 +110,22 @@ export class client extends httpClient {
     evenHandle (msg) {}
     setTimeout ():void {
       this._clearTimeout()
-      this.wsTimeoutId = setTimeout(() => this.emitTimeout('wsTimeout'), 6000)
+      this.wsCountTime = (this.wsCountTime + 1) % 1000
+      const curCountTime = this.wsCountTime
+      this.wsTimeoutId = setTimeout(() => this.emitTimeout('wsTimeout', curCountTime), 6000)
       // logger.warn('wsTimeout:', reason)
     }
 
-    emitTimeout (reason:string) {
-      this.emitter.emit('wsTimeout')
-      this._clearTimeout()
-      logger.warn('wsTimeout:', reason)
+    emitTimeout (reason:string, count:number) {
+      if (this.wsCountTime === count) {
+        this.emitter.emit('wsTimeout')
+        this._clearTimeout()
+        logger.warn('wsTimeout:', reason)
+      }
     }
 
     _clearTimeout () {
+      this.wsCountTime = (this.wsCountTime + 1) % 1000
       if (typeof this.wsTimeoutId !== 'undefined') {
         clearTimeout(this.wsTimeoutId)
         this.wsTimeoutId = undefined
@@ -151,17 +158,17 @@ export class client extends httpClient {
         }).then(res => {
         // @ts-ignore
           if (res.data.online === false) {
-            this.emitTimeout('bot is offline!')
+            this.emitTimeout('bot is offline!', this.wsCountTime)
           } else {
           // logger.info('bot is online!!')
           }
         }).catch(err => {
           logger.warn(err)
-          this.emitTimeout('bot is offline!')
+          this.emitTimeout('bot is offline!', this.wsCountTime)
         })
       } catch (e) {
         logger.error('eventHandle:', e)
-        this.emitTimeout('bot is offline!')
+        this.emitTimeout('bot is offline!', this.wsCountTime)
       }
     }
 }
