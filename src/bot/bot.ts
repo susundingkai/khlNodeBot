@@ -1,11 +1,11 @@
 import { GetGateway, myRes } from './connect/getGateway.js'
 import { client } from './connect/client.js'
 import { checkInternetConnection, Sleep } from './utils/utils.js'
-import { httpInterface } from './interface/httpInterface.js'
+import { requestBuilderOptions } from './interface/httpInterface.js'
 import { Response } from 'node-fetch'
 import { getLogger } from './logs/logger.js'
 import { apiPath } from './config.js'
-import { PluginBase, pluginOptions } from './interface/pluginBase.js'
+import { msgOptions, PluginBase } from './interface/pluginBase.js'
 import { openDb } from './connect/database.js'
 import express from 'express'
 import bodyParser from 'body-parser'
@@ -59,11 +59,17 @@ export class Bot extends client {
       this.getMe()
     }
 
-    getMe ():void {
-      this.sendMsg(httpInterface.me).then(data => {
-        this.meID = (<{data:{id:string}}>data).data.id
-        console.log('bot id is ', this.meID)
-      })
+    async getMe (): Promise<void> {
+      const options: requestBuilderOptions = {
+        method: 'POST',
+        apiPath: apiPath.getMe,
+        headers: { 'Content-Type': 'application/json' }
+      }
+      const sendFunc = this.httpBuilder(options)
+      const res = await sendFunc()
+      const result = await res.json()
+      this.meID = (<{ data: { id: string } }><unknown>result).data.id
+      console.log('bot id is ', this.meID)
     }
 
     restart (this, secret) {
@@ -100,9 +106,6 @@ export class Bot extends client {
         throw errorMessage.getGatewayFailed
       }
       this.clientConfig(this.gateway)
-      // this.connect(this.gateway)
-      // this.checkOnline()
-      // this.checkOnline()
       if (init) {
         // @ts-ignore
         this.app.listen(apiPath.httpPort, function () {
@@ -117,7 +120,7 @@ export class Bot extends client {
       try {
         this.route(msg).then(res => {
           try {
-            if (res.type !== -1) { loggerRoute.info(JSON.stringify(res)) }
+            if (res !== undefined && res.type !== -1) { loggerRoute.info(JSON.stringify(res)) }
           } catch (e) {
             logger.error(e)
           }
@@ -139,38 +142,41 @@ export class Bot extends client {
       }
     }
 
-    addRoute (path:string, _plug) {
+    addRoute (path:string, _plug) { // 加载插件
       const plugSecret = this.genSecret()
       const db = openDb(_plug.name)
-      const plug = new _plug(this.emitter, db, plugSecret)
+      const plug = new _plug(this.emitter, db, plugSecret, getLogger(_plug.name))
       plug.initRoutes()
       this.routeMap.set(path, plug)
       this.plugMap.set(plugSecret, plug)
       this.emitter.addListener(plugSecret.toString(), (data) => this.handlePlugEmit(data, plug))
-      // @ts-ignore
-      // this.app.all(path, (req, res) => {
-      //   this.handleHttp(req, res, plug)
-      // })
       this.app.use(path, plug.routes)
-      // this.app.get('/' + path, function (req, res) {
-      //     plug.handleReq(res.data)
-      // })
     }
 
     async route (msg):Promise<any> {
       const emptyRes = { type: -1, data: {} }
       const content = msg.content
-      for (const key of this.routeMap.keys()) {
+      const option:msgOptions = {
+        targetId: msg.target_id
+      }
+      for (const key of this.routeMap.keys()) { // 优先检查是否为命令
         if (content.startsWith(key)) {
           const data = content.split(' ').slice(1)
           const plug = this.routeMap.get(key)
-          const option:pluginOptions = {
-            targetId: msg.target_id
-          }
           return plug.handle(data, option).then(res => {
             return res
           }).catch(e => {
             logger.warn(key + ' err:', e)
+            return emptyRes
+          })
+        }
+      }
+      for (const plug of this.plugMap.values()) {
+        if (plug.ifChannelExist(option.targetId)) {
+          return plug.customHandle(msg).then(res => {
+            return res
+          }).catch(e => {
+            logger.warn('err:', e)
             return emptyRes
           })
         }
@@ -183,16 +189,21 @@ export class Bot extends client {
       if (data === undefined) {
         return 0
       }
-      const channelIds = await plug.getChannels()
+      const channelIds = plug.getChannels()
       // console.log(data)
+      data.data = await this.imageReplace(data.data)
       for (const targetId of channelIds) {
-        this.sendMsg({
-          data: {
+        this.sendMsg(
+          {
             type: data.type,
             target_id: targetId,
             content: data.data
-          },
-          url: apiPath.createMessage
+          }
+        ).then((res) => {
+          if (res.code === 400) {
+            logger.warn('channel not found or no authorization, automatically unbinding....')
+            plug.unBindChannel(targetId)
+          }
         }).catch(e => {
           logger.error('route err:', e)
         })

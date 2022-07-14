@@ -52,5 +52,6 @@ export namespace KHLEvent {
         // console.log(input.extra.author.roles)
         return input
       }
+      return input
     }
 }

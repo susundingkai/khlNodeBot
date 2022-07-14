@@ -1,4 +1,4 @@
-import fetch from 'node-fetch'
+import fetch, { Headers } from 'node-fetch'
 import FormData from 'form-data'
 import { apiPath } from '../config.js'
 import * as getImageFile from './http.mjs'
@@ -6,9 +6,10 @@ import { getLogger } from '../logs/logger.js'
 import { imageRegex } from '../utils/utils.js'
 import { errorMessage } from '../interface/base.js'
 import events from 'events'
+import { requestBuilderOptions, revMsg } from '../interface/httpInterface'
+import { URLSearchParams } from 'url'
 
 const logger = getLogger('http')
-
 export namespace sendReq {
     export class httpClient {
         protected auth: {};
@@ -24,31 +25,53 @@ export namespace sendReq {
           this.emitter = new events.EventEmitter()
         }
 
-        async sendMsg (data) {
-          data.data.content = await this.imageReplace(data.data.content)
-          logger.info(data)
-          // the URL of the website to which the content must be posted is passed as a parameter to the fetch function along with specifying the method, body and header
-          const res = await fetch(apiPath.baseUrl + data.url, {
-            method: 'POST',
-            body: JSON.stringify(data.data),
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: 'Bot ' + this.token
+        httpBuilder (options:requestBuilderOptions) {
+          const myMap = new Map(Object.entries(options.headers))
+          const headers = new Headers()
+          headers.append('Authorization', 'Bot ' + this.token)
+          headers.append('Content-Type', 'application/json')
+          for (const key of myMap.keys()) {
+            headers.append(key, <string>myMap.get(key))
+          }
+          if (options.method.toUpperCase() === 'GET') {
+            return async (param = {}) => {
+              // if (options.function !== undefined) param = options.function(param)
+              const paramString = new URLSearchParams(param).toString()
+              const URL = apiPath.baseUrl + options.apiPath + '?' + paramString
+              const res = await fetch(URL, {
+                method: 'GET',
+                headers: headers
+              })
+              return res
             }
-          })
+          }
+          if (options.method.toUpperCase() === 'POST') {
+            return async (body = {}) => {
+              // if (options.function !== undefined) body = options.function(body)
+              const URL = apiPath.baseUrl + options.apiPath
+              const res = await fetch(URL, {
+                method: 'POST',
+                body: JSON.stringify(body),
+                headers: headers
+              })
+              return res
+            }
+          }
+        }
+
+        async sendMsg (data) {
+          const options:requestBuilderOptions = {
+            method: 'POST',
+            apiPath: apiPath.createMessage,
+            headers: {}
+          }
+          const sendFunc = this.httpBuilder(options)
+          // data.data.content = await this.imageReplace(data.data.content)
+          // logger.info('sssssdasda', data)
+          const res = await sendFunc(data)
           const result = await res.json()
           logger.info(JSON.stringify(result))
-          return result
-          // .then(result => {
-          //     return result.json()
-          // })
-          // //the posted contents to the website in json format is displayed as the output on the screen
-          // .then(jsonFormat => {
-          //     console.log(jsonFormat)
-          // })
-          // .catch(err => {
-          //     console.log('请求gateway错误:', err)
-          // })
+          return <revMsg>result
         }
 
         async uploadFile (data) {

@@ -5,9 +5,8 @@ import { configPath } from '../../config/config.js'
 import path from 'path'
 
 export function openDb (name:string) {
-  const myDB = open({
-    path: path.join(configPath.databasePath, name)
-    // any options go here, we can turn on compression like this:
+  const myDB = open(path.join(configPath.databasePath, name), {
+    maxDbs: 12
   })
   return myDB
   // return open({

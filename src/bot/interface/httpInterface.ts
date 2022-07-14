@@ -1,9 +1,16 @@
 export namespace httpInterface{
-    export var me = {
-      url: '/api/v3/user/me',
-      data: {}
-    }
-    // export let me:base={
-    //     url:'/api/v3/user/me',
-    // }
+
+}
+
+export interface revMsg {
+  code: number,
+  message: string,
+  data: any
+}
+export interface requestBuilderOptions {
+  method:string
+  apiPath:string
+  // parameters:{}
+  headers: {}
+  function?:Function
 }
